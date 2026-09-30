@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+title: "vLLM Inference Benchmark"
+message: "If you use this software in research, please cite the repository."
+type: software
+authors:
+  - family-names: "Alqudah"
+    given-names: "Mahmoud"
+repository-code: "https://github.com/mahmoudqudah2006/vllm-inference-benchmark"
+license: MIT
+version: 0.1.0
+date-released: 2026-09-30
