@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
+from typing import Annotated
 
 import typer
 from rich.console import Console
@@ -16,6 +17,7 @@ from .workload import expand_prompts, load_prompts
 
 app = typer.Typer(help="Benchmark vLLM and OpenAI-compatible LLM inference servers.")
 console = Console()
+DEFAULT_PROMPTS = Path("data/prompts.jsonl")
 
 
 def _run(coro):  # type: ignore[no-untyped-def]
@@ -24,8 +26,12 @@ def _run(coro):  # type: ignore[no-untyped-def]
 
 @app.command()
 def health(
-    base_url: str = typer.Option("http://localhost:8000", help="Inference server base URL."),
-    api_key: str | None = typer.Option(None, envvar="VLLM_API_KEY", help="Optional API key."),
+    base_url: Annotated[
+        str, typer.Option(help="Inference server base URL.")
+    ] = "http://localhost:8000",
+    api_key: Annotated[
+        str | None, typer.Option(envvar="VLLM_API_KEY", help="Optional API key.")
+    ] = None,
 ) -> None:
     """Check connectivity and show the first model exposed by /v1/models."""
 
@@ -46,19 +52,40 @@ def health(
 
 @app.command("run")
 def run_command(
-    base_url: str = typer.Option("http://localhost:8000", help="Inference server base URL."),
-    model: str | None = typer.Option(None, help="Model name; auto-detected when omitted."),
-    prompts: Path = typer.Option(Path("data/prompts.jsonl"), exists=True, readable=True),
-    requests: int = typer.Option(50, min=1, help="Number of requests to send."),
-    concurrency: int = typer.Option(4, min=1, help="Maximum in-flight requests."),
-    request_rate: float | None = typer.Option(
-        None, min=0.001, help="Optional fixed request arrival rate in requests/second."
-    ),
-    max_tokens: int = typer.Option(128, min=1, help="Maximum output tokens per request."),
-    temperature: float = typer.Option(0.0, min=0.0, help="Sampling temperature."),
-    timeout: float = typer.Option(180.0, min=1.0, help="Per-request timeout in seconds."),
-    output_dir: Path | None = typer.Option(None, help="Directory for JSON/CSV/Markdown results."),
-    api_key: str | None = typer.Option(None, envvar="VLLM_API_KEY", help="Optional API key."),
+    base_url: Annotated[
+        str, typer.Option(help="Inference server base URL.")
+    ] = "http://localhost:8000",
+    model: Annotated[
+        str | None, typer.Option(help="Model name; auto-detected when omitted.")
+    ] = None,
+    prompts: Annotated[
+        Path, typer.Option(exists=True, readable=True)
+    ] = DEFAULT_PROMPTS,
+    requests: Annotated[
+        int, typer.Option(min=1, help="Number of requests to send.")
+    ] = 50,
+    concurrency: Annotated[
+        int, typer.Option(min=1, help="Maximum in-flight requests.")
+    ] = 4,
+    request_rate: Annotated[
+        float | None,
+        typer.Option(min=0.001, help="Optional fixed request arrival rate in requests/second."),
+    ] = None,
+    max_tokens: Annotated[
+        int, typer.Option(min=1, help="Maximum output tokens per request.")
+    ] = 128,
+    temperature: Annotated[
+        float, typer.Option(min=0.0, help="Sampling temperature.")
+    ] = 0.0,
+    timeout: Annotated[
+        float, typer.Option(min=1.0, help="Per-request timeout in seconds.")
+    ] = 180.0,
+    output_dir: Annotated[
+        Path | None, typer.Option(help="Directory for JSON/CSV/Markdown results.")
+    ] = None,
+    api_key: Annotated[
+        str | None, typer.Option(envvar="VLLM_API_KEY", help="Optional API key.")
+    ] = None,
 ) -> None:
     """Run a streaming chat-completions benchmark."""
 
@@ -90,7 +117,7 @@ def run_command(
     benchmark_run = _run(run_benchmark(config=config, prompts=prompt_list, api_key=api_key))
 
     if output_dir is None:
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        timestamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         output_dir = Path("results") / timestamp
     write_report(benchmark_run, output_dir)
 
